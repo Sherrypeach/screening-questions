@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preguntas de screening</title>
+<style>
+  :root {
+    --bg: #faf9f7;
+    --card: #ffffff;
+    --ink: #1c1a17;
+    --muted: #6b6560;
+    --line: #e4e0da;
+    --accent: #3b5bdb;
+    --ok-bg: #e9f7ef; --ok-ink: #1a7f42; --ok-line: #a8ddbd;
+    --warn-bg: #fdf4e3; --warn-ink: #9a6510; --warn-line: #ecd3a0;
+    --bad-bg: #fdecea; --bad-ink: #b3261e; --bad-line: #f0b7b2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 24px 80px;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 28px; }
+
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+  textarea {
+    width: 100%; min-height: 220px; padding: 14px 16px; resize: vertical;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+    font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--ink);
+  }
+  textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+
+  .bar { display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+    padding: 10px 18px; border-radius: 8px; border: 1px solid transparent;
+    background: var(--accent); color: #fff;
+  }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .count { font-size: 13px; color: var(--muted); margin-left: auto; }
+  .count.over { color: var(--bad-ink); font-weight: 600; }
+  .hint { font-size: 13px; color: var(--warn-ink); }
+
+  .msg { margin-top: 24px; padding: 14px 16px; border-radius: 10px; font-size: 14px; }
+  .msg.error { background: var(--bad-bg); border: 1px solid var(--bad-line); color: var(--bad-ink); }
+  .banner {
+    margin: 24px 0 0; padding: 12px 16px; border-radius: 10px; font-size: 13px;
+    background: #eef1fb; border: 1px solid #c7d0f0; color: #2f3f8f;
+  }
+  .banner b { letter-spacing: .03em; }
+  .msg .rid { display: block; margin-top: 6px; font-size: 12px; opacity: .75; font-family: ui-monospace, monospace; }
+
+  .spinner {
+    display: inline-block; width: 15px; height: 15px; vertical-align: -2px;
+    border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+    border-radius: 50%; animation: spin .7s linear infinite; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* --- resultados --- */
+  #out { margin-top: 40px; }
+  .summary { border-top: 1px solid var(--line); padding-top: 24px; margin-bottom: 8px; }
+  .summary h2 { font-size: 15px; margin: 0 0 6px; }
+  .summary p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+  .tally { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  .pill {
+    display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .01em;
+    padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--card); color: var(--muted); white-space: nowrap;
+  }
+  .pill.ok   { background: var(--ok-bg);   color: var(--ok-ink);   border-color: var(--ok-line); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn-ink); border-color: var(--warn-line); }
+  .pill.bad  { background: var(--bad-bg);  color: var(--bad-ink);  border-color: var(--bad-line); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px; margin-top: 14px;
+  }
+  .card.flagged { border-color: var(--bad-line); box-shadow: inset 3px 0 0 var(--bad-ink); }
+  .card-head { display: flex; gap: 10px; align-items: baseline; }
+  .num { font-size: 12px; font-weight: 700; color: var(--muted); min-width: 20px; }
+  .q { font-size: 17px; font-weight: 600; line-height: 1.4; margin: 0; letter-spacing: -0.005em; }
+  .meta { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 0 30px; }
+
+  .cite { margin: 12px 0 0 30px; padding: 10px 12px; border-radius: 8px; font-size: 13.5px; }
+  .cite.ok   { background: var(--ok-bg);   border: 1px solid var(--ok-line); }
+  .cite.warn { background: var(--warn-bg); border: 1px solid var(--warn-line); }
+  .cite.bad  { background: var(--bad-bg);  border: 1px solid var(--bad-line); }
+  .cite-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: 5px; }
+  .cite.ok .cite-label { color: var(--ok-ink); }
+  .cite.warn .cite-label { color: var(--warn-ink); }
+  .cite.bad .cite-label { color: var(--bad-ink); }
+  .cite q { font-style: italic; }
+  .cite-note { display: block; margin-top: 7px; font-size: 12px; opacity: .8; font-weight: 600; }
+
+  details { margin: 12px 0 0 30px; }
+  summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent); }
+  summary::marker { color: var(--muted); }
+  dl { margin: 10px 0 0; font-size: 14px; }
+  dt { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 10px; }
+  dt:first-child { margin-top: 0; }
+  dd { margin: 3px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Preguntas de screening</h1>
+  <p class="sub">Pega una descripcion de puesto. Cada pregunta cita el fragmento del JD que la justifica, y la cita se verifica contra el texto pegado.</p>
+
+  <label for="jd">Descripcion del puesto</label>
+  <textarea id="jd" placeholder="Pega aqui la descripcion del puesto..." spellcheck="false"></textarea>
+
+  <div class="bar">
+    <button id="go" disabled>Generar preguntas</button>
+    <button id="demo" class="ghost">Ver ejemplo</button>
+    <span id="hint" class="hint"></span>
+    <span id="count" class="count">0 caracteres</span>
+  </div>
+
+  <div id="msg"></div>
+  <div id="out"></div>
+
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const MIN_CHARS = 200;
+  const MAX_CHARS = 15000;
+
+  // La app solo funciona servida por el server local.  Abierta como archivo
+  // (file:, y data: en algunos visores) no hay servidor al que llamar: un fetch
+  // a /api/generate resolveria contra el propio archivo.  Se comprueba que el
+  // origen sea http(s) -- no que sea file: -- para cubrir todos los casos, y se
+  // explica el motivo al cargar en vez de fallar luego con un error de red generico.
+  const NO_SERVER = !/^https?:$/.test(location.protocol);
+
+  const $jd = document.getElementById('jd');
+  const $go = document.getElementById('go');
+  const $demo = document.getElementById('demo');
+  const $count = document.getElementById('count');
+  const $hint = document.getElementById('hint');
+  const $msg = document.getElementById('msg');
+  const $out = document.getElementById('out');
+
+  // ---- Datos de ejemplo -----------------------------------------------------
+  // Permite ver la app sin clave de API.  La respuesta es fija, pero la
+  // verificacion de citas NO: se ejecuta de verdad contra SAMPLE.jd, igual que
+  // con una respuesta real.  Dos citas estan mal a proposito -- una parafraseada
+  // y una inventada -- para que se vea el control funcionando, no solo pasando.
+  const SAMPLE = {
+    jd: `Buscamos un ingeniero de plataforma con experiencia en Kubernetes y Terraform para liderar la migracion a infraestructura como codigo. El candidato trabajara con equipos de producto y sera responsable de la fiabilidad del entorno de produccion.
+
+Requisitos: 5 anos de experiencia en infraestructura cloud, ingles avanzado, y disponibilidad para trabajo hibrido en Madrid.
+
+Valoramos experiencia previa en observabilidad y en migraciones de sistemas legacy. El equipo mantiene una rotacion de guardias de una semana cada mes. Buscamos ademas a alguien que pueda hacer mentoria a dos ingenieros junior.`,
+    response: {
+      role_summary: 'Ingeniero de plataforma senior para liderar una migracion a infraestructura como codigo, con responsabilidad sobre la fiabilidad de produccion y mentoria a dos juniors.',
+      seniority: 'senior',
+      questions: [
+        { id: 1, question: 'Contame una migracion a infraestructura como codigo que hayas liderado. Como decidiste por que servicio empezar?',
+          category: 'experience_depth', probes: 'Si lidero de verdad o solo participo, y si tiene criterio de priorizacion.',
+          jd_evidence: 'experiencia en Kubernetes y Terraform',
+          strong_answer: 'Explica criterios concretos: riesgo, acoplamiento, frecuencia de cambio.',
+          red_flag: 'Habla siempre en "nosotros" y no puede aislar su aporte.', time_minutes: 10 },
+        { id: 2, question: 'Como definis los objetivos de fiabilidad de un entorno de produccion, y como los negociás con producto?',
+          category: 'technical_skill', probes: 'Si piensa en SLOs y error budgets o solo en uptime.',
+          jd_evidence: 'responsable de la fiabilidad del entorno de produccion',
+          strong_answer: 'Menciona SLOs, error budgets, y una negociacion real con producto.',
+          red_flag: 'Responde "99.9%" sin explicar como se mide ni quien lo decide.', time_minutes: 5 },
+        { id: 3, question: 'Que instrumentaste la ultima vez que un sistema viejo fallaba de forma intermitente?',
+          category: 'domain_knowledge', probes: 'Profundidad real en observabilidad, mas alla de nombrar herramientas.',
+          jd_evidence: 'Valoramos experiencia previa en observabilidad ... migraciones de sistemas legacy',
+          strong_answer: 'Distingue metricas, logs y trazas segun el tipo de problema.',
+          red_flag: 'Enumera herramientas sin explicar que llego a medir.', time_minutes: 10 },
+        { id: 4, question: 'Como es una semana de guardia bien llevada, para vos? Que cambiarias de la ultima que hiciste?',
+          category: 'collaboration', probes: 'Experiencia real de on-call y si mejora el sistema despues.',
+          jd_evidence: 'una rotacion de guardias de una semana cada mes',
+          strong_answer: 'Cuenta un postmortem concreto y que arreglo despues.',
+          red_flag: 'Nunca estuvo de guardia, o la describe como algo puramente sufrido.', time_minutes: 5 },
+        { id: 5, question: 'Como organizas tu semana en un esquema hibrido trabajando con equipos de producto?',
+          category: 'role_logistics', probes: 'Compatibilidad con el esquema y la ubicacion del puesto.',
+          jd_evidence: 'disponibilidad para trabajo hibrido en Barcelona',
+          strong_answer: 'Tiene criterio propio sobre que trabajo justifica ir presencial.',
+          red_flag: 'No sabia que el puesto era hibrido.', time_minutes: 2 },
+        { id: 6, question: 'Que certificaciones de Kubernetes tenes vigentes?',
+          category: 'technical_skill', probes: 'Credenciales formales.',
+          jd_evidence: 'se requiere certificacion CKA vigente',
+          strong_answer: 'CKA o CKAD vigente.',
+          red_flag: 'Ninguna certificacion.', time_minutes: 2 },
+      ],
+    },
+  };
+
+  const CATEGORY_ES = {
+    technical_skill: 'Habilidad tecnica',
+    experience_depth: 'Profundidad de experiencia',
+    domain_knowledge: 'Conocimiento del dominio',
+    role_logistics: 'Logistica del puesto',
+    collaboration: 'Colaboracion',
+  };
+  const SENIORITY_ES = {
+    junior: 'Junior', mid: 'Semi-senior', senior: 'Senior',
+    lead: 'Lead', unclear: 'No queda claro en el JD',
+  };
+
+  // ---- Verificacion de citas (§2b del PLAN) --------------------------------
+  // Comparar en crudo daria falsos negativos constantes: comillas curvas,
+  // saltos de linea dentro de la cita, puntuacion anadida, mayusculas.  Una
+  // marca roja sobre algo que si estaba entrena a ignorar el indicador.
+
+  function normalize(s) {
+    return s
+      .toLowerCase()
+      .replace(/[‘’‛ʼ]/g, "'")
+      .replace(/[“”„]/g, '"')
+      .replace(/[–—−]/g, '-')
+      .replace(/ /g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function trimEdges(s) {
+    return s.replace(/^["'“‘\s.,;:!?–—-]+/, '')
+            .replace(/["'”’\s.,;:!?–—-]+$/, '');
+  }
+
+  function verifyCitation(citation, jdText) {
+    const hay = normalize(jdText);
+    const needle = normalize(trimEdges(citation || ''));
+    if (!needle) return { state: 'bad', ratio: 0 };
+
+    // 1. Coincidencia literal tras normalizar.
+    if (hay.includes(needle)) return { state: 'ok', ratio: 1 };
+
+    // 2. Cita con elipsis: los tramos deben aparecer EN ORDEN.
+    const segs = needle.split(/\s*(?:\.\.\.|…)\s*/).map(s => trimEdges(s)).filter(Boolean);
+    if (segs.length > 1) {
+      let cursor = 0, allFound = true;
+      for (const seg of segs) {
+        const at = hay.indexOf(seg, cursor);
+        if (at === -1) { allFound = false; break; }
+        cursor = at + seg.length;
+      }
+      if (allFound) return { state: 'ok', ratio: 1 };
+    }
+
+    // 3. Tramo contiguo mas largo, en palabras.  Separa parafrasear de cerca
+    //    (recuperable) de inventar (la pregunta no deberia existir).
+    const words = needle.split(' ');
+    let longest = 0;
+    for (let i = 0; i < words.length; i++) {
+      for (let j = words.length; j > i + longest; j--) {
+        if (hay.includes(words.slice(i, j).join(' '))) { longest = j - i; break; }
+      }
+    }
+    const ratio = words.length ? longest / words.length : 0;
+    return ratio >= 0.6 ? { state: 'warn', ratio } : { state: 'bad', ratio };
+  }
+
+  const CITE_LABEL = {
+    ok:   'Cita verificada en el JD',
+    warn: 'Coincidencia parcial con el JD',
+    bad:  'No encontrada en el texto pegado',
+  };
+
+  // ---- UI -------------------------------------------------------------------
+
+  function updateCounter() {
+    const n = $jd.value.trim().length;
+    $count.textContent = n.toLocaleString('es') + ' caracteres';
+    $count.classList.toggle('over', n > MAX_CHARS);
+
+    if (NO_SERVER) {
+      $go.disabled = true;
+    } else if (n > MAX_CHARS) {
+      $hint.textContent = 'Demasiado largo. Recorta a responsabilidades y requisitos.';
+      $go.disabled = true;
+    } else if (n > 0 && n < MIN_CHARS) {
+      $hint.textContent = 'Muy corto para generar buenas preguntas.';
+      $go.disabled = false;
+    } else {
+      $hint.textContent = '';
+      $go.disabled = n === 0;
+    }
+  }
+
+  function showError(message, requestId) {
+    $msg.innerHTML = '';
+    const box = document.createElement('div');
+    box.className = 'msg error';
+    box.textContent = message;
+    if (requestId) {
+      const rid = document.createElement('span');
+      rid.className = 'rid';
+      rid.textContent = 'request_id: ' + requestId;
+      box.appendChild(rid);
+    }
+    $msg.appendChild(box);
+  }
+
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function buildCard(q, index, jdText) {
+    const verdict = verifyCitation(q.jd_evidence, jdText);
+
+    const card = el('article', 'card' + (verdict.state === 'bad' ? ' flagged' : ''));
+
+    const head = el('div', 'card-head');
+    head.appendChild(el('span', 'num', String(index + 1).padStart(2, '0')));
+    head.appendChild(el('p', 'q', q.question));
+    card.appendChild(head);
+
+    const meta = el('div', 'meta');
+    meta.appendChild(el('span', 'pill', CATEGORY_ES[q.category] || q.category));
+    meta.appendChild(el('span', 'pill', q.time_minutes + ' min'));
+    meta.appendChild(el('span', 'pill ' + verdict.state, CITE_LABEL[verdict.state]));
+    card.appendChild(meta);
+
+    // jd_evidence NO se colapsa: es la historia de verificacion del proyecto.
+    const cite = el('div', 'cite ' + verdict.state);
+    cite.appendChild(el('span', 'cite-label', 'Evidencia en el JD'));
+    const quote = el('q', null, q.jd_evidence);
+    cite.appendChild(quote);
+    if (verdict.state === 'warn') {
+      cite.appendChild(el('span', 'cite-note', 'Coincide ' + Math.round(verdict.ratio * 100) + '% de la cita de forma contigua.'));
+    }
+    card.appendChild(cite);
+
+    // Guia de puntuacion: se usa durante la llamada, no al escanear la lista.
+    const det = el('details');
+    det.appendChild(el('summary', null, 'Guia de puntuacion'));
+    const dl = el('dl');
+    [['Que busca', q.probes], ['Buena respuesta', q.strong_answer], ['Senal de alarma', q.red_flag]]
+      .forEach(([label, value]) => {
+        dl.appendChild(el('dt', null, label));
+        dl.appendChild(el('dd', null, value));
+      });
+    det.appendChild(dl);
+    card.appendChild(det);
+
+    return card;
+  }
+
+  function render(data, jdText) {
+    $out.innerHTML = '';
+
+    let questions = Array.isArray(data.questions) ? data.questions : [];
+    let notice = '';
+
+    // El esquema no puede imponer el rango 6-10; se valida aqui.
+    if (questions.length > 10) {
+      notice = `El modelo devolvio ${questions.length} preguntas; se muestran las 10 primeras.`;
+      questions = questions.slice(0, 10);
+    } else if (questions.length <= 2) {
+      notice = 'El JD no tenia suficiente detalle para generar un set completo.';
+    }
+
+    const verdicts = questions.map(q => verifyCitation(q.jd_evidence, jdText));
+    const verified = verdicts.filter(v => v.state === 'ok').length;
+    const flagged = verdicts.filter(v => v.state === 'bad').length;
+
+    const sum = el('section', 'summary');
+    sum.appendChild(el('h2', null, 'Resumen del puesto'));
+    sum.appendChild(el('p', null, data.role_summary || '—'));
+
+    const tally = el('div', 'tally');
+    tally.appendChild(el('span', 'pill', questions.length + ' preguntas'));
+    tally.appendChild(el('span', 'pill', 'Seniority: ' + (SENIORITY_ES[data.seniority] || data.seniority)));
+    const citePill = el('span',
+      'pill ' + (verified === questions.length ? 'ok' : flagged ? 'bad' : 'warn'),
+      `${verified} de ${questions.length} citas verificadas`);
+    tally.appendChild(citePill);
+    sum.appendChild(tally);
+
+    if (notice) {
+      const n = el('p', null, notice);
+      n.style.cssText = 'margin-top:14px;font-size:13px;color:var(--warn-ink)';
+      sum.appendChild(n);
+    }
+    $out.appendChild(sum);
+
+    questions.forEach((q, i) => $out.appendChild(buildCard(q, i, jdText)));
+
+    if (!questions.length) return;
+
+    const actions = el('div', 'bar');
+    actions.style.marginTop = '22px';
+
+    const expand = el('button', 'ghost', 'Expandir todo');
+    let open = false;
+    expand.addEventListener('click', () => {
+      open = !open;
+      $out.querySelectorAll('details').forEach(d => { d.open = open; });
+      expand.textContent = open ? 'Colapsar todo' : 'Expandir todo';
+    });
+
+    const copy = el('button', 'ghost', 'Copiar todo');
+    copy.addEventListener('click', async () => {
+      const text = questions.map((q, i) => {
+        const v = verdicts[i];
+        const mark = v.state === 'ok' ? '' : v.state === 'warn' ? '  [cita parcial]' : '  [CITA NO VERIFICADA]';
+        return [
+          `${i + 1}. ${q.question}`,
+          `   [${CATEGORY_ES[q.category] || q.category} · ${q.time_minutes} min]`,
+          `   JD: "${q.jd_evidence}"${mark}`,
+          `   Busca: ${q.probes}`,
+          `   Buena respuesta: ${q.strong_answer}`,
+          `   Alarma: ${q.red_flag}`,
+        ].join('\n');
+      }).join('\n\n');
+
+      try {
+        await navigator.clipboard.writeText(text);
+        copy.textContent = 'Copiado';
+        setTimeout(() => { copy.textContent = 'Copiar todo'; }, 1600);
+      } catch {
+        copy.textContent = 'No se pudo copiar';
+        setTimeout(() => { copy.textContent = 'Copiar todo'; }, 1600);
+      }
+    });
+
+    actions.appendChild(expand);
+    actions.appendChild(copy);
+    $out.appendChild(actions);
+  }
+
+  async function generate() {
+    const jd = $jd.value.trim();
+    if (!jd) return;
+
+    $msg.innerHTML = '';
+    $out.innerHTML = '';
+    $go.disabled = true;
+    $go.innerHTML = '<span class="spinner"></span>Generando...';
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jd }),
+      });
+      const payload = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const err = payload && payload.error;
+        showError((err && err.message) || `Error del servidor (HTTP ${res.status}).`, err && err.request_id);
+        return;
+      }
+      render(payload, jd);
+    } catch {
+      showError('No se pudo contactar el servidor local. Comprueba que sigue corriendo.');
+    } finally {
+      $go.textContent = 'Generar preguntas';
+      updateCounter();
+    }
+  }
+
+  function showSample() {
+    $jd.value = SAMPLE.jd;
+    updateCounter();
+    // Se pasa SAMPLE.jd a render() para que verifyCitation corra de verdad
+    // contra el texto de muestra, en vez de mostrar marcas prefabricadas.
+    render(SAMPLE.response, SAMPLE.jd);
+
+    const banner = el('div', 'banner');
+    banner.appendChild(el('b', null, 'DATOS DE EJEMPLO'));
+    banner.appendChild(document.createTextNode(
+      ' — no es una llamada real a la API. Las marcas de verificacion si se calculan ' +
+      'en vivo sobre el JD de arriba: dos citas estan alteradas a proposito para mostrar ' +
+      'el control funcionando.'
+    ));
+    $out.insertBefore(banner, $out.firstChild);
+    banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  $jd.addEventListener('input', updateCounter);
+  $go.addEventListener('click', generate);
+  $demo.addEventListener('click', showSample);
+  updateCounter();
+
+  if (NO_SERVER) {
+    $go.title = 'Abre http://localhost:3000 en vez del archivo';
+    showError(
+      'Esta pagina esta abierta como archivo, no servida por el servidor local, ' +
+      'y asi no puede llamar a la API. Pulsa "Ver ejemplo" para ver la app funcionando ' +
+      'sin clave. Para generar preguntas reales: node --env-file=.env server.js ' +
+      'y abre http://localhost:3000'
+    );
+  }
+})();
+</script>
+</body>
+</html>
